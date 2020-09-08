@@ -1,0 +1,324 @@
+---
+title: "COVID-19 Mapper: College Towns"
+author: 
+  - name: "Michelle Catherine Kelly"
+    url: https://michelleckelly.github.io
+date: "Last updated: `r format(Sys.Date())`"
+output:
+  html_document: 
+    toc: true
+    number_sections: true
+    theme: paper
+    highlight: tango
+---
+
+-----------
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(httr)
+library(tidyverse)
+library(lubridate)
+library(gridExtra)
+```
+
+# Pull COVID-19 data
+
+## Data availability statement
+
+This data is compiled by the Bing COVID-19 Tracker effort (https://www.bing.com/covid) from multiple sources, including the [World Health Organization (WHO)](https://www.who.int/emergencies/diseases/novel-coronavirus-2019), [Centers for Disease Control and Prevention (CDC)](https://www.cdc.gov/coronavirus/2019-ncov/index.html), national and state public health departments, [BNO News](https://bnonews.com/index.php/2020/04/the-latest-coronavirus-cases/), [24/7 Wall St.](https://247wallst.com/), and [Wikipedia](https://en.wikipedia.org/wiki/2019%E2%80%9320_coronavirus_pandemic). The raw dataset can be accessed from the [GitHub Repo microsoft/Bing-COVID-19-Data](https://github.com/microsoft/Bing-COVID-19-Data). The dataset is updated daily at 3AM PST, and is released on a 24-hour delay.
+
+## Code
+
+```{r read data, echo=TRUE}
+# Read data in from Bing Github repo
+covid <- read.csv(url("https://raw.githubusercontent.com/microsoft/Bing-COVID-19-Data/master/data/Bing-COVID19-Data.csv"))
+
+# Filter dataset to USA
+USA <- covid %>% 
+  filter(Country_Region == "United States") %>%
+  mutate(Updated = mdy(Updated))
+
+# Filter dataset to Michigan
+MI <- covid %>% 
+  filter(Country_Region == "United States" & AdminRegion1 == "Michigan") %>%
+  mutate(Updated = mdy(Updated))
+
+# Filter dataset to Houghton County (Michigan Tech)
+
+# Additionally, calculate number of cases per 1,000 people
+# Population of Houghton Co: 35,684 (source: googs, 2019)
+# Population of Marquette Co: 66,699 (googs, 2019)
+
+# Cases per 1,000 people = Total number of cases / (population size / 1,000)
+
+HOTN <- covid %>% 
+  filter(Country_Region == "United States" & AdminRegion1 == "Michigan" &
+           AdminRegion2 == "Houghton County") %>%
+  mutate(Updated = mdy(Updated),
+         CasesPer1000 = Confirmed / (35684/1000),
+         Confirmed_7dmean = zoo::rollmean(Confirmed, 7, fill = NA),
+         ConfirmedChange_7dmean = zoo::rollmean(ConfirmedChange, 7, fill = NA),
+         CasesPer1000_7dmean = zoo::rollmean(CasesPer1000, 7, fill = NA))
+
+# Filter dataset to Marquette County (Northern MI Univ)
+
+MQT <- covid %>% 
+  filter(Country_Region == "United States" & AdminRegion1 == "Michigan" &
+           AdminRegion2 == "Marquette County") %>%
+  mutate(Updated = mdy(Updated), 
+         CasesPer1000 = Confirmed / (66699/1000),
+         Confirmed_7dmean = zoo::rollmean(Confirmed, 7, fill = NA),
+         ConfirmedChange_7dmean = zoo::rollmean(ConfirmedChange, 7, fill = NA),
+         CasesPer1000_7dmean = zoo::rollmean(CasesPer1000, 7, fill = NA))
+```
+
+# Plot
+
+```{r plot, echo=TRUE, warning=FALSE, fig.width=10, fig.height=8}
+# Create unified palette
+colors <- RColorBrewer::brewer.pal(name = "Dark2", n = 3)
+names(colors) <- c("Houghton", "Marquette")
+
+# Plot: Cumulative cases
+## Houghton Co
+a <-
+  ggplot(data = HOTN, aes(x = Updated)) +
+    # Cases
+    geom_bar(stat = "identity", aes(y = Confirmed, fill = "Houghton"), alpha = 0.2) +
+    annotate(geom = "text", x = mdy("06-15-2020"), y = 30, size = 3,
+             label = "Cumulative\ncases", hjust = "center") +
+    annotate(geom = "segment", x = mdy("06-28-2020"), xend = mdy("07-15-2020"), 
+             y = 29, 
+             yend = HOTN$Confirmed[HOTN$Updated == mdy("07-10-2020")]) +
+    # 7 day average of cases
+    geom_line(aes(y = Confirmed_7dmean, color = "Houghton")) +
+    annotate(geom = "text", x = mdy("05-01-2020"), y = 20, size = 3,
+             label = "7-day\naverage", hjust = "center") +
+    annotate(geom = "segment", x = mdy("05-01-2020"), xend = mdy("05-01-2020"), 
+             y = 10, 
+             yend = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("05-01-2020")]) +
+    # Add a point on the semester start date
+    annotate(geom = "text", x = mdy("07-25-2020"),
+             y = 75, size = 3,
+             label = "MTU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("08-12-2020"), xend = mdy("08-27-2020"), 
+             y = 75, 
+             yend = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("08-27-2020")]) +
+    annotate("point", x = mdy("08-27-2020"),
+             y = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("08-27-2020")],
+             shape = 21, fill = "white", size = 3) +
+    # Theme adjustments
+    theme_classic() +
+    scale_colour_manual(values = colors, limits = names(colors)) +
+    scale_fill_manual(values = colors, limits = names(colors)) +
+    labs(y = "Cumulative confirmed COVID-19 cases", 
+         x = element_blank(), title = "Houghton County, Michigan",
+         subtitle = "Population: 35,684") +
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          axis.text = element_text(color = "black"), legend.position = "none",
+          panel.grid.major.y = element_line(color = "grey95"),
+          panel.grid.minor.y = element_line(color = "grey95"))
+
+## Marquette Co
+b <- 
+  ggplot(data = MQT, aes(x = Updated, y = Confirmed)) +
+    # Cases
+    geom_bar(stat = "identity", aes(y = Confirmed, fill = "Marquette"), alpha = 0.2) +
+    annotate(geom = "text", x = mdy("06-15-2020"), y = 90, size = 3,
+             label = "Cumulative\ncases", hjust = "center") +
+    annotate(geom = "segment", x = mdy("06-28-2020"), xend = mdy("07-10-2020"), 
+             y = 80, 
+             yend = MQT$Confirmed[MQT$Updated == mdy("07-05-2020")]) +
+    # 7 day average of cases
+    geom_line(aes(y = Confirmed_7dmean, color = "Marquette")) +
+    annotate(geom = "text", x = mdy("04-15-2020"), y = 80, size = 3,
+             label = "7-day\naverage", hjust = "center") +
+    annotate(geom = "segment", x = mdy("04-15-2020"), xend = mdy("04-15-2020"), 
+             y = 60, 
+             yend = MQT$Confirmed_7dmean[MQT$Updated == mdy("04-15-2020")]) +
+    # Add a point on the semester start date
+    annotate(geom = "text", x = mdy("07-20-2020"),
+             y = 215, size = 3,
+             label = "NMU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("08-07-2020"), xend = mdy("08-17-2020"), 
+             y = 212, 
+             yend = MQT$Confirmed_7dmean[MQT$Updated == mdy("08-17-2020")]) +
+    annotate("point", x = mdy("08-17-2020"),
+             y = MQT$Confirmed_7dmean[MQT$Updated == mdy("08-17-2020")],
+             shape = 21, fill = "white", color = colors[2], size = 3) +
+    # Theme adjustments
+    theme_classic() +
+    scale_colour_manual(values = colors, limits = names(colors)) +
+    scale_fill_manual(values = colors, limits = names(colors)) +
+    labs(y = "Cumulative confirmed COVID-19 cases", 
+         x = element_blank(), title = "Marquette County, Michigan",
+         subtitle = "Population: 66,699") +
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          axis.text = element_text(color = "black"), legend.position = "none",
+          panel.grid.major.y = element_line(color = "grey95"),
+          panel.grid.minor.y = element_line(color = "grey95"))
+
+## Combined
+c <- 
+  ggplot(data = NULL, aes(y = CasesPer1000_7dmean)) +
+    # 7 day average of cases per 1,000 people
+    geom_line(data = HOTN, aes(x = Updated,  color = "Houghton")) +
+    geom_line(data = MQT, aes(x = Updated, color = "Marquette")) +
+    # Add a point on the semester start date
+    # HOTN
+    annotate(geom = "text", x = mdy("06-10-2020"),
+             y = 2, size = 3,
+             label = "MTU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("06-30-2020"), xend = mdy("08-27-2020"), 
+             y = 2, 
+             yend = HOTN$CasesPer1000_7dmean[HOTN$Updated == mdy("08-27-2020")]) +
+    annotate("point", x = mdy("08-27-2020"),
+             y = HOTN$CasesPer1000_7dmean[HOTN$Updated == mdy("08-27-2020")],
+             shape = 21, fill = "white", color = colors[1], size = 3) +
+    # MQT
+    annotate(geom = "text", x = mdy("07-20-2020"),
+             y = 3.3, size = 3,
+             label = "NMU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("08-07-2020"), xend = mdy("08-17-2020"), 
+             y = 3.2, 
+             yend = MQT$CasesPer1000_7dmean[MQT$Updated == mdy("08-17-2020")]) +
+    annotate("point", x = mdy("08-17-2020"),
+             y = MQT$CasesPer1000_7dmean[MQT$Updated == mdy("08-17-2020")],
+             shape = 21, fill = "white", color = colors[2], size = 3) +
+    # Theme adjustments
+    theme_classic() +
+    scale_colour_manual(values = colors, limits = names(colors)) +
+    scale_fill_manual(values = colors, limits = names(colors)) +
+    labs(y = "Cumulative cases per 1,000 people", 
+         x = element_blank()) +
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          axis.text = element_text(color = "black"), legend.position = "none",
+          panel.grid.major.y = element_line(color = "grey95"),
+          panel.grid.minor.y = element_line(color = "grey95"))
+
+# Plot: Confirmed cases per day
+## Houghton Co
+d <- 
+  ggplot(data = HOTN, aes(x = Updated)) +
+    # Cases
+    geom_bar(stat = "identity", aes(y = ConfirmedChange, fill = "Houghton"), 
+             alpha = 0.2) +
+    annotate(geom = "text", x = mdy("06-15-2020"), y = 2.2, size = 3,
+             label = "New\ncases", hjust = "center") +
+    annotate(geom = "segment", x = mdy("06-25-2020"), xend = mdy("07-03-2020"), 
+             y = 2, 
+             yend = HOTN$ConfirmedChange[HOTN$Updated == mdy("07-03-2020")]) +
+    # 7 day average of cases
+    geom_line(aes(y = ConfirmedChange_7dmean, color = "Houghton")) +
+    annotate(geom = "text", x = mdy("05-01-2020"), y = 3, size = 3,
+             label = "7-day\naverage", hjust = "center") +
+    annotate(geom = "segment", x = mdy("05-01-2020"), xend = mdy("05-01-2020"), 
+             y = 1.5, 
+             yend = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("05-01-2020")]) +
+    # Add a point on the semester start date
+    annotate(geom = "text", x = mdy("07-25-2020"),
+             y = 8, size = 3,
+             label = "MTU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("08-10-2020"), xend = mdy("08-27-2020"), 
+             y = 7, 
+             yend = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")]) +
+    annotate("point", x = mdy("08-27-2020"),
+             y = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")],
+             shape = 21, fill = "white", size = 3) +
+    # Theme adjustments
+    theme_classic() +
+    scale_colour_manual(values = colors, limits = names(colors)) +
+    scale_fill_manual(values = colors, limits = names(colors)) +
+    labs(y = "New confirmed COVID-19 cases", 
+         x = element_blank(), title = "Houghton County, Michigan",
+         subtitle = "Population: 35,684") +
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          axis.text = element_text(color = "black"), legend.position = "none",
+          panel.grid.major.y = element_line(color = "grey95"),
+          panel.grid.minor.y = element_line(color = "grey95"))
+
+## Marquette Co
+e <- 
+  ggplot(data = MQT, aes(x = Updated)) +
+    # Cases
+    geom_bar(stat = "identity", aes(y = ConfirmedChange, fill = "Marquette"), alpha = 0.2) +
+    annotate(geom = "text", x = mdy("06-15-2020"), y = 4, size = 3,
+             label = "New\ncases", hjust = "center") +
+    annotate(geom = "segment", x = mdy("06-26-2020"), xend = mdy("07-03-2020"), 
+             y = 4, 
+             yend = MQT$ConfirmedChange[MQT$Updated == mdy("07-03-2020")]) +
+    # 7 day average of cases
+    geom_line(aes(y = ConfirmedChange_7dmean, color = "Marquette")) +
+    annotate(geom = "text", x = mdy("04-15-2020"), y = 4, size = 3,
+             label = "7-day\naverage", hjust = "center") +
+    annotate(geom = "segment", x = mdy("04-15-2020"), xend = mdy("04-15-2020"), 
+             y = 2.5, 
+             yend = MQT$ConfirmedChange_7dmean[MQT$Updated == mdy("04-15-2020")]) +
+    # Add a point on the semester start date
+    annotate(geom = "text", x = mdy("07-25-2020"),
+             y = 8, size = 3,
+             label = "NMU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("08-07-2020"), xend = mdy("08-17-2020"), 
+             y = 6.8, 
+             yend = MQT$ConfirmedChange_7dmean[MQT$Updated == mdy("08-17-2020")]) +
+    annotate("point", x = mdy("08-17-2020"),
+             y = MQT$ConfirmedChange_7dmean[MQT$Updated == mdy("08-17-2020")],
+             shape = 21, fill = "white", color = colors[2], size = 3) +
+    # Theme adjustments
+    theme_classic() +
+    scale_colour_manual(values = colors, limits = names(colors)) +
+    scale_fill_manual(values = colors, limits = names(colors)) +
+    labs(y = "New confirmed COVID-19 cases", 
+         x = element_blank(), title = "Marquette County, Michigan",
+         subtitle = "Population: 66,699") +
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          axis.text = element_text(color = "black"), legend.position = "none",
+          panel.grid.major.y = element_line(color = "grey95"),
+          panel.grid.minor.y = element_line(color = "grey95"))
+
+## Combined
+f <- 
+  ggplot(data = NULL, aes(y = ConfirmedChange_7dmean)) +
+    # 7 day average of cases per 1,000 people
+    geom_line(data = HOTN, aes(x = Updated,  color = "Houghton")) +
+    geom_line(data = MQT, aes(x = Updated, color = "Marquette")) +
+    # Add a point on the semester start date
+    # HOTN
+    annotate(geom = "text", x = mdy("06-01-2020"),
+             y = 4, size = 3,
+             label = "MTU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("06-20-2020"), xend = mdy("08-27-2020"), 
+             y = 4, 
+             yend = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")]) +
+    annotate("point", x = mdy("08-27-2020"),
+             y = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")],
+             shape = 21, fill = "white", color = colors[1], size = 3) +
+    # MQT
+    annotate(geom = "text", x = mdy("07-15-2020"),
+             y = 6.5, size = 3,
+             label = "NMU\nsemester\nbegins", hjust = "center") +
+    annotate(geom = "segment", x = mdy("08-05-2020"), xend = mdy("08-17-2020"), 
+             y = 6.5, 
+             yend = MQT$ConfirmedChange_7dmean[MQT$Updated == mdy("08-17-2020")]) +
+    annotate("point", x = mdy("08-17-2020"),
+             y = MQT$ConfirmedChange_7dmean[MQT$Updated == mdy("08-17-2020")],
+             shape = 21, fill = "white", color = colors[2], size = 3) +
+    # Theme adjustments
+    theme_classic() +
+    scale_colour_manual(values = colors, limits = names(colors)) +
+    scale_fill_manual(values = colors, limits = names(colors)) +
+    labs(y = "New confirmed COVID-19 cases", 
+         x = element_blank()) +
+    theme(panel.border = element_rect(color = "black", fill = NA),
+          axis.text = element_text(color = "black"), legend.position = "none",
+          panel.grid.major.y = element_line(color = "grey95"),
+          panel.grid.minor.y = element_line(color = "grey95"))
+
+# Arrange in grid
+grob <- grid.arrange(a, b, c, d, e, f, nrow = 2)
+
+# Save combined plot image to working directory
+#ggsave(grob, filename = "CovidMapper.png", device = "png", width = 10, 
+#       height = 6, units = "in")
+```
