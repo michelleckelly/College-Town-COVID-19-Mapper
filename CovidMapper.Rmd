@@ -319,6 +319,6 @@ f <-
 grob <- grid.arrange(a, b, c, d, e, f, nrow = 2)
 
 # Save combined plot image to working directory
-#ggsave(grob, filename = "CovidMapper.png", device = "png", width = 10, 
-#       height = 6, units = "in")
+ggsave(grob, filename = "CovidMapper.png", device = "png", width = 10, 
+       height = 8, units = "in")
 ```
