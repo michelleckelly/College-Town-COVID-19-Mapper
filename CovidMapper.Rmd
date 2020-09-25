@@ -77,7 +77,7 @@ MQT <- covid %>%
 
 ```{r plot, echo=TRUE, warning=FALSE, fig.width=10, fig.height=8}
 # Create unified palette
-colors <- RColorBrewer::brewer.pal(name = "Dark2", n = 3)
+colors <- RColorBrewer::brewer.pal(name = "Set1", n = 3)
 names(colors) <- c("Houghton", "Marquette")
 
 # Plot: Cumulative cases
@@ -105,9 +105,9 @@ a <-
     annotate(geom = "segment", x = mdy("08-12-2020"), xend = mdy("08-27-2020"), 
              y = 75, 
              yend = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("08-27-2020")]) +
-    annotate("point", x = mdy("08-27-2020"),
+    annotate("point", x = mdy("08-27-2020"), 
              y = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("08-27-2020")],
-             shape = 21, fill = "white", size = 3) +
+             shape = 21, fill = "white", color = colors[1], size = 3) +
     # Theme adjustments
     theme_classic() +
     scale_colour_manual(values = colors, limits = names(colors)) +
@@ -225,7 +225,7 @@ d <-
              yend = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")]) +
     annotate("point", x = mdy("08-27-2020"),
              y = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")],
-             shape = 21, fill = "white", size = 3) +
+             shape = 21, fill = "white", size = 3, color = colors[1]) +
     # Theme adjustments
     theme_classic() +
     scale_colour_manual(values = colors, limits = names(colors)) +
