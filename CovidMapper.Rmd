@@ -86,21 +86,21 @@ a <-
   ggplot(data = HOTN, aes(x = Updated)) +
     # Cases
     geom_bar(stat = "identity", aes(y = Confirmed, fill = "Houghton"), alpha = 0.2) +
-    annotate(geom = "text", x = mdy("06-15-2020"), y = 30, size = 3,
+    annotate(geom = "text", x = mdy("06-15-2020"), y = 75, size = 3,
              label = "Cumulative\ncases", hjust = "center") +
     annotate(geom = "segment", x = mdy("06-28-2020"), xend = mdy("07-15-2020"), 
-             y = 29, 
+             y = 60, 
              yend = HOTN$Confirmed[HOTN$Updated == mdy("07-10-2020")]) +
     # 7 day average of cases
     geom_line(aes(y = Confirmed_7dmean, color = "Houghton")) +
-    annotate(geom = "text", x = mdy("05-01-2020"), y = 20, size = 3,
+    annotate(geom = "text", x = mdy("05-01-2020"), y = 50, size = 3,
              label = "7-day\naverage", hjust = "center") +
     annotate(geom = "segment", x = mdy("05-01-2020"), xend = mdy("05-01-2020"), 
-             y = 10, 
+             y = 30, 
              yend = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("05-01-2020")]) +
     # Add a point on the semester start date
     annotate(geom = "text", x = mdy("07-25-2020"),
-             y = 75, size = 3,
+             y = 100, size = 3,
              label = "MTU\nsemester\nbegins", hjust = "center") +
     annotate(geom = "segment", x = mdy("08-12-2020"), xend = mdy("08-27-2020"), 
              y = 75, 
