@@ -108,6 +108,16 @@ a <-
     annotate("point", x = mdy("08-27-2020"), 
              y = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("08-27-2020")],
              shape = 21, fill = "white", color = colors[1], size = 3) +
+    # Point for all-online shift
+    annotate(geom = "text", x = mdy("09-01-2020"),
+             y = 600, size = 3,
+             label = "MTU shifts\nto all-online\nformat", hjust = "center") +
+    annotate(geom = "segment", x = mdy("09-17-2020"), xend = mdy("09-30-2020"), 
+             y = 600, 
+             yend = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("09-30-2020")]) +
+    annotate("point", x = mdy("09-30-2020"), 
+             y = HOTN$Confirmed_7dmean[HOTN$Updated == mdy("09-30-2020")],
+             shape = 21, fill = "white", color = colors[1], size = 3) +
     # Theme adjustments
     theme_classic() +
     scale_colour_manual(values = colors, limits = names(colors)) +
@@ -226,6 +236,16 @@ d <-
     annotate("point", x = mdy("08-27-2020"),
              y = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("08-27-2020")],
              shape = 21, fill = "white", size = 3, color = colors[1]) +
+    # Point for all-online shift
+    annotate(geom = "text", x = mdy("09-01-2020"),
+             y = 35, size = 3,
+             label = "MTU shifts\nto all-online\nformat", hjust = "center") +
+    annotate(geom = "segment", x = mdy("09-17-2020"), xend = mdy("09-30-2020"), 
+             y = 32, 
+             yend = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("09-30-2020")]) +
+    annotate("point", x = mdy("09-30-2020"), 
+             y = HOTN$ConfirmedChange_7dmean[HOTN$Updated == mdy("09-30-2020")],
+             shape = 21, fill = "white", color = colors[1], size = 3) +
     # Theme adjustments
     theme_classic() +
     scale_colour_manual(values = colors, limits = names(colors)) +
